@@ -11,16 +11,20 @@ source:
 
 build:
   skip: true  # [win]
-  number: 0
+  number: 1
   run_exports:
     - {{ pin_subpackage('oneloop', max_pin='x.x') }}
   script:
     - sed -i "s|FC = gfortran|FC = $FC|g" Config
     - sed -i "s|FFLAGS = -O|FFLAGS = $FFLAGS|g" Config
+    # Get .dylib extension for macOS
+    - sed -i "s|libavh_olo.so|libavh_olo${SHLIB_EXT}|g" create.py  # [osx]
+    # FIXME: Link in libgfortran for arm64 macOS
+    - sed -i "s|fc,'-shared',|fc,'-shared','-L$PREFIX/lib','-lgfortran',|g" create.py  # [osx and arm64]
     - python create.py dynamic
     - mkdir -p $PREFIX/include/oneloop
     - mv *.mod $PREFIX/include/oneloop/
-    - mv libavh_olo.so $PREFIX/lib/
+    - mv libavh_olo${SHLIB_EXT} $PREFIX/lib/
     - ./clean.sh
 
 requirements:
@@ -38,9 +42,7 @@ test:
     - {{ compiler('fortran') }}
     - python
   commands:
-    # The SHLIB_EXT is .so even for macOS given how the library is built, so
-    # need to hardcode '.so' instead of using ${SHLIB_EXT}
-    - test -f $PREFIX/lib/libavh_olo.so
+    - test -f $PREFIX/lib/libavh_olo${SHLIB_EXT}
     - test -f $PREFIX/include/oneloop/avh_olo_version.mod
     - test -f $PREFIX/include/oneloop/avh_olo_units.mod
     - test -f $PREFIX/include/oneloop/avh_olo_dp_kinds.mod

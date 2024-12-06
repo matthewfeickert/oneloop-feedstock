@@ -15,4 +15,4 @@ fortran_compiler:
 fortran_compiler_version:
 - '13'
 target_platform:
-- linux-64
+- linux-ppc64le
