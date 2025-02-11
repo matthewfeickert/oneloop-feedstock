@@ -2,7 +2,9 @@
 {% set version = "3.7.2" %}
 
 package:
-  name: {{ name }}
+  # Have top level name be unique from any outputs
+  # c.f. https://github.com/conda-forge/conda-forge.github.io/blob/abfc33db28c35e9a8f6b719d0021768f0d5d06be/docs/maintainer/knowledge_base.md?plain=1#L1749
+  name: {{ name }}-split
   version: {{ version }}
 
 source:
@@ -10,84 +12,167 @@ source:
   sha256: fa36c0716ab0526cb98693094b7efa2219434bed9f59429f123b654a33309848
 
 build:
-  skip: true  # [win]
-  number: 1
-  run_exports:
-    - {{ pin_subpackage('oneloop', max_pin='x.x') }}
-  script:
-    - sed -i "s|FC = gfortran|FC = $FC|g" Config
-    - sed -i "s|FFLAGS = -O|FFLAGS = $FFLAGS|g" Config
-    # Get .dylib extension for macOS
-    - sed -i "s|libavh_olo.so|libavh_olo${SHLIB_EXT}|g" create.py  # [osx]
-    # FIXME: Link in libgfortran for arm64 macOS
-    - sed -i "s|fc,'-shared',|fc,'-shared','-L$PREFIX/lib','-lgfortran',|g" create.py  # [osx and arm64]
-    - python create.py dynamic
-    - mkdir -p $PREFIX/include/oneloop
-    - mv *.mod $PREFIX/include/oneloop/
-    - mv libavh_olo${SHLIB_EXT} $PREFIX/lib/
-    - ./clean.sh
+  number: 2
 
-requirements:
-  build:
-    - {{ stdlib('c') }}
-    - {{ compiler('fortran') }}
-    - sed
-    - python
+outputs:
+  - name: {{ name }}
 
-test:
-  source_files:
-    - src/
-    - example/
-  requires:
-    - {{ compiler('fortran') }}
-    - python
-  commands:
-    - test -f $PREFIX/lib/libavh_olo${SHLIB_EXT}
-    - test -f $PREFIX/include/oneloop/avh_olo_version.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_units.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_kinds.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_arrays.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_prec.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_print.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_auxfun.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_olog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_dilog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_bnlog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_qmplx.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_bub.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_tri.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_box.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp_boxc.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_kinds.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_dp.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_arrays.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_prec.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_print.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_auxfun.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_olog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_dilog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_bnlog.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_qmplx.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_bub.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_tri.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_box.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp_boxc.mod
-    - test -f $PREFIX/include/oneloop/avh_olo_qp.mod
-    - test -f $PREFIX/include/oneloop/avh_olo.mod
+    build:
+      skip: true  # [win]
+      run_exports:
+        - {{ pin_subpackage('oneloop', max_pin='x.x') }}
+      script:
+        - sed -i "s|FC = gfortran|FC = $FC|g" Config
+        - sed -i "s|FFLAGS = -O|FFLAGS = $FFLAGS|g" Config
+        # Get .dylib extension for macOS
+        - sed -i "s|libavh_olo.so|libavh_olo${SHLIB_EXT}|g" create.py  # [osx]
+        # FIXME: Link in libgfortran for arm64 macOS
+        - sed -i "s|fc,'-shared',|fc,'-shared','-L$PREFIX/lib','-lgfortran',|g" create.py  # [osx and arm64]
+        - python create.py dynamic
+        - mkdir -p $PREFIX/include/oneloop
+        - mv *.mod $PREFIX/include/oneloop/
+        - mv libavh_olo${SHLIB_EXT} $PREFIX/lib/
+        - ./clean.sh
 
-    - cd example
-    - export WITHLT=no
-    - export LTVSNge26=yes
-    - export WITHCOLI=no
-    - ../src/avh_pc_exe.py "case" "LT" "${WITHLT}" example16.f
-    - ../src/avh_pc_exe.py "case" "LTVSNge26" "${WITHLT}${LTVSNge26}" example16.f
-    - ../src/avh_pc_exe.py "case" "COLI" "${WITHCOLI}" example16.f
-    - unset WITHLT
-    - unset LTVSNge26
-    - unset WITHCOLI
-    # Use $LDFLAGS for more generic solution to -L$PREFIX/lib
-    - $FC $FFLAGS example16.f -o example -I$PREFIX/include/oneloop $LDFLAGS -lavh_olo
-    - ./example < input  # [build_platform == target_platform]
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('fortran') }}
+        - sed
+        - python
+
+    test:
+      source_files:
+        - src/
+        - example/
+      requires:
+        - {{ compiler('fortran') }}
+        - python
+      commands:
+        - test -f $PREFIX/lib/libavh_olo${SHLIB_EXT}
+        - test -f $PREFIX/include/oneloop/avh_olo_version.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_units.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_kinds.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_arrays.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_prec.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_print.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_auxfun.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_olog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_dilog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_bnlog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_qmplx.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_bub.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_tri.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_box.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_boxc.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_kinds.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_arrays.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_prec.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_print.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_auxfun.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_olog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_dilog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_bnlog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_qmplx.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_bub.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_tri.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_box.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_boxc.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp.mod
+        - test -f $PREFIX/include/oneloop/avh_olo.mod
+
+        - cd example
+        - export WITHLT=no
+        - export LTVSNge26=yes
+        - export WITHCOLI=no
+        - ../src/avh_pc_exe.py "case" "LT" "${WITHLT}" example16.f
+        - ../src/avh_pc_exe.py "case" "LTVSNge26" "${WITHLT}${LTVSNge26}" example16.f
+        - ../src/avh_pc_exe.py "case" "COLI" "${WITHCOLI}" example16.f
+        - unset WITHLT
+        - unset LTVSNge26
+        - unset WITHCOLI
+        # Use $LDFLAGS for more generic solution to -L$PREFIX/lib
+        - $FC $FFLAGS example16.f -o example -I$PREFIX/include/oneloop $LDFLAGS -lavh_olo
+        - ./example < input  # [build_platform == target_platform]
+
+  - name: {{ name }}-static
+
+    build:
+      skip: true  # [win]
+      script:
+        - sed -i "s|FC = gfortran|FC = $FC|g" Config
+        - sed -i "s|FFLAGS = -O|FFLAGS = $FFLAGS|g" Config
+        # # FIXME: Link in libgfortran for arm64 macOS
+        # - sed -i "s|fc,'-shared',|fc,'-shared','-L$PREFIX/lib','-lgfortran',|g" create.py  # [osx and arm64]
+        - python create.py
+        - mkdir -p $PREFIX/include/oneloop
+        - mv *.mod $PREFIX/include/oneloop/
+        - mv libavh_olo.a $PREFIX/lib/
+        - ./clean.sh
+
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('fortran') }}
+        - sed
+        - python
+
+    test:
+      source_files:
+        - src/
+        - example/
+      requires:
+        - {{ compiler('fortran') }}
+        - python
+      commands:
+        - test -f $PREFIX/lib/libavh_olo.a
+        - test ! -f $PREFIX/lib/libavh_olo${SHLIB_EXT}
+        - test -f $PREFIX/include/oneloop/avh_olo_version.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_units.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_kinds.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_arrays.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_prec.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_print.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_auxfun.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_olog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_dilog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_bnlog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_qmplx.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_bub.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_tri.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_box.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp_boxc.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_kinds.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_dp.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_arrays.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_prec.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_print.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_auxfun.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_olog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_dilog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_bnlog.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_qmplx.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_bub.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_tri.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_box.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp_boxc.mod
+        - test -f $PREFIX/include/oneloop/avh_olo_qp.mod
+        - test -f $PREFIX/include/oneloop/avh_olo.mod
+
+        - cd example
+        - export WITHLT=no
+        - export LTVSNge26=yes
+        - export WITHCOLI=no
+        - ../src/avh_pc_exe.py "case" "LT" "${WITHLT}" example16.f
+        - ../src/avh_pc_exe.py "case" "LTVSNge26" "${WITHLT}${LTVSNge26}" example16.f
+        - ../src/avh_pc_exe.py "case" "COLI" "${WITHCOLI}" example16.f
+        - unset WITHLT
+        - unset LTVSNge26
+        - unset WITHCOLI
+        # Use $LDFLAGS for more generic solution to -L$PREFIX/lib
+        - $FC $FFLAGS example16.f -o example -I$PREFIX/include/oneloop $LDFLAGS -lavh_olo
+        - ./example < input  # [build_platform == target_platform]
 
 about:
   home: https://bitbucket.org/hameren/oneloop/
@@ -106,5 +191,6 @@ about:
   dev_url: https://bitbucket.org/hameren/oneloop/
 
 extra:
+  feedstock-name: oneloop
   recipe-maintainers:
     - matthewfeickert

@@ -87,6 +87,7 @@ Current release info
 | Name | Downloads | Version | Platforms |
 | --- | --- | --- | --- |
 | [![Conda Recipe](https://img.shields.io/badge/recipe-oneloop-green.svg)](https://anaconda.org/conda-forge/oneloop) | [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/oneloop.svg)](https://anaconda.org/conda-forge/oneloop) | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/oneloop.svg)](https://anaconda.org/conda-forge/oneloop) | [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/oneloop.svg)](https://anaconda.org/conda-forge/oneloop) |
+| [![Conda Recipe](https://img.shields.io/badge/recipe-oneloop--static-green.svg)](https://anaconda.org/conda-forge/oneloop-static) | [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/oneloop-static.svg)](https://anaconda.org/conda-forge/oneloop-static) | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/oneloop-static.svg)](https://anaconda.org/conda-forge/oneloop-static) | [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/oneloop-static.svg)](https://anaconda.org/conda-forge/oneloop-static) |
 
 Installing oneloop
 ==================
@@ -98,16 +99,16 @@ conda config --add channels conda-forge
 conda config --set channel_priority strict
 ```
 
-Once the `conda-forge` channel has been enabled, `oneloop` can be installed with `conda`:
+Once the `conda-forge` channel has been enabled, `oneloop, oneloop-static` can be installed with `conda`:
 
 ```
-conda install oneloop
+conda install oneloop oneloop-static
 ```
 
 or with `mamba`:
 
 ```
-mamba install oneloop
+mamba install oneloop oneloop-static
 ```
 
 It is possible to list all of the versions of `oneloop` available on your platform with `conda`:
