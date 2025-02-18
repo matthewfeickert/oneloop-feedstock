@@ -12,7 +12,7 @@ source:
   sha256: fa36c0716ab0526cb98693094b7efa2219434bed9f59429f123b654a33309848
 
 build:
-  number: 3
+  number: 4
 
 outputs:
   - name: {{ name }}
@@ -49,8 +49,10 @@ outputs:
       source_files:
         - src/
         - example/
+        - example_cpp/
       requires:
         - {{ compiler('fortran') }}
+        - {{ compiler('cxx') }}
         - python
       commands:
         - test -f $PREFIX/lib/libavh_olo${SHLIB_EXT}
@@ -129,6 +131,10 @@ outputs:
         - ./example16 < input
       {% endif %}
 
+        - cd example_cpp
+        - $CXX example.cpp -o example_cpp $CXXFLAGS -I. $LDFLAGS -lavh_olo -lgfortran
+        - ./example_cpp
+
   - name: {{ name }}-static
 
     build:
@@ -157,8 +163,10 @@ outputs:
       source_files:
         - src/
         - example/
+        - example_cpp/
       requires:
         - {{ compiler('fortran') }}
+        - {{ compiler('cxx') }}
         - python
       commands:
         - test -f $PREFIX/lib/libavh_olo.a
@@ -237,6 +245,10 @@ outputs:
         - $FC $FFLAGS example16.f -o example16 -I$PREFIX/include/oneloop $LDFLAGS -lavh_olo
         - ./example16 < input
       {% endif %}
+
+        - cd example_cpp
+        - $CXX example.cpp -o example_cpp $CXXFLAGS -I. $LDFLAGS -lavh_olo -lgfortran
+        - ./example_cpp
 
 about:
   home: https://bitbucket.org/hameren/oneloop/
