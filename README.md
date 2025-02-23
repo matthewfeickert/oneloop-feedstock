@@ -20,6 +20,8 @@ internal squared masses. It deals with all UV and IR divergences within
 dimensional regularization. Furthermore, it provides routines to evaluate
 these functions using straightforward numerical integration.
 
+OneLOop is authored by Andreas van Hameren.
+
 
 Current build status
 ====================
